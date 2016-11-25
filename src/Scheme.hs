@@ -1,4 +1,5 @@
 module Scheme where
+import           Control.Monad
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
 -- PARSING
@@ -19,13 +20,20 @@ parseString = do
 -- or symbols:
 parseAtom :: Parser LispVal
 parseAtom = do
-              first <- letter <|> symbol -- <|> is the Parsec choice combinator 
+              first <- letter <|> symbol -- <|> is the Parsec choice combinator
               rest <- many (letter <|> digit <|> symbol)
               let atom = first:rest
               return $ case atom of
                          "#t" -> Bool True
                          "#f" -> Bool False
                          _    -> Atom atom
+
+parseNumber :: Parser LispVal
+parseNumber = liftM (Number . read) $ many1 digit
+  --do
+  --number <- many1 digit
+  --return $ (Number . read) number
+
 
 -- RETURN VALUES
 --Every constructor in an algebraic data type also acts like a function that

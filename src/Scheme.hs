@@ -51,15 +51,22 @@ parseNumber =
   --number <- many1 digit
   --return $ (Number . read) number
 
+parseExpr :: Parser LispVal
+parseExpr =  parseAtom
+         <|> parseString
+         <|> parseNumber
+
 -- Paranthesized lists
 parseList :: Parser LispVal
 parseList =
   parseExpr `sepBy` spaces >>= \expressions -> return $ List expressions
 
-parseExpr :: Parser LispVal
-parseExpr =  parseAtom
-         <|> parseString
-         <|> parseNumber
+-- (a . (b . nil)) ---> [[a],[b]]
+parseDottedList :: Parser LispVal
+parseDottedList = do
+  head <- parseExpr `endBy` spaces -- "(a "
+  tail <- char '.' >> spaces >> parseExpr -- ". (b . nil))"
+  return $ DottedList head tail
 
 -- EXPRESSION READING
 readExpr :: String -> String

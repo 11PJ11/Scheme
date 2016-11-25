@@ -15,6 +15,18 @@ parseString = do
              char '"'
              return $ String x
 
+-- An atom is a letter or symbol, followed by any number of letters, digits,
+-- or symbols:
+parseAtom :: Parser LispVal
+parseAtom = do
+              first <- letter <|> symbol -- <|> is the Parsec choice combinator 
+              rest <- many (letter <|> digit <|> symbol)
+              let atom = first:rest
+              return $ case atom of
+                         "#t" -> Bool True
+                         "#f" -> Bool False
+                         _    -> Atom atom
+
 -- RETURN VALUES
 --Every constructor in an algebraic data type also acts like a function that
 --turns its arguments into a value of its type. It also serves as a pattern that

@@ -55,6 +55,11 @@ parseExpr :: Parser LispVal
 parseExpr =  parseAtom
          <|> parseString
          <|> parseNumber
+         <|> parseQuoted
+         <|> do char '('
+                list <- try parseList <|> parseDottedList
+                char ')'
+                return list
 
 -- Paranthesized lists
 parseList :: Parser LispVal
@@ -67,6 +72,12 @@ parseDottedList = do
   head <- parseExpr `endBy` spaces -- "(a "
   tail <- char '.' >> spaces >> parseExpr -- ". (b . nil))"
   return $ DottedList head tail
+
+parseQuoted :: Parser LispVal
+parseQuoted = do
+  char '\''
+  x <- parseExpr
+  return $ List [Atom "quote", x]
 
 -- EXPRESSION READING
 readExpr :: String -> String

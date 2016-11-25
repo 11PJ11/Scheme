@@ -29,11 +29,21 @@ parseAtom = do
                          _    -> Atom atom
 
 parseNumber :: Parser LispVal
-parseNumber = liftM (Number . read) $ many1 digit
+parseNumber =
+  -- >>= notation
+  many1 digit >>= \digits ->
+    return $ (Number . read) digits
+-- DOT NOTATION
+-- liftM (Number . read) $ many1 digit
+-- DO NOTATION
   --do
   --number <- many1 digit
   --return $ (Number . read) number
 
+parseExpr :: Parser LispVal
+parseExpr =  parseAtom
+         <|> parseString
+         <|> parseNumber
 
 -- RETURN VALUES
 --Every constructor in an algebraic data type also acts like a function that
@@ -47,6 +57,6 @@ data LispVal = Atom String
              | Bool Bool
 
 readExpr :: String -> String
-readExpr input = case parse (spaces >> symbol) "lisp" input of
+readExpr input = case parse parseExpr "lisp" input of
   Left err -> "No match: " ++ show err
   Right _  -> "Found value"

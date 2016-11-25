@@ -2,6 +2,17 @@ module Scheme where
 import           Control.Monad
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
+-- RETURN VALUES
+--Every constructor in an algebraic data type also acts like a function that
+--turns its arguments into a value of its type. It also serves as a pattern that
+--can be used in the left-hand side of a pattern-matching expression
+data LispVal = Atom String
+             | List [LispVal]
+             | DottedList [LispVal] LispVal
+             | Number Integer
+             | String String
+             | Bool Bool
+
 -- PARSING
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
@@ -40,22 +51,17 @@ parseNumber =
   --number <- many1 digit
   --return $ (Number . read) number
 
+-- Paranthesized lists
+parseList :: Parser LispVal
+parseList =
+  parseExpr `sepBy` spaces >>= \expressions -> return $ List expressions
+
 parseExpr :: Parser LispVal
 parseExpr =  parseAtom
          <|> parseString
          <|> parseNumber
 
--- RETURN VALUES
---Every constructor in an algebraic data type also acts like a function that
---turns its arguments into a value of its type. It also serves as a pattern that
---can be used in the left-hand side of a pattern-matching expression
-data LispVal = Atom String
-             | List [LispVal]
-             | DottedList [LispVal] LispVal
-             | Number Integer
-             | String String
-             | Bool Bool
-
+-- EXPRESSION READING
 readExpr :: String -> String
 readExpr input = case parse parseExpr "lisp" input of
   Left err -> "No match: " ++ show err

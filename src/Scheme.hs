@@ -2,7 +2,9 @@ module Scheme where
 import           Control.Monad
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
+-- *****************************************************************************
 -- RETURN VALUES
+-- *****************************************************************************
 --Every constructor in an algebraic data type also acts like a function that
 --turns its arguments into a value of its type. It also serves as a pattern that
 --can be used in the left-hand side of a pattern-matching expression
@@ -13,7 +15,23 @@ data LispVal = Atom String
              | String String
              | Bool Bool
 
+-- *****************************************************************************
+-- EVALUATION
+-- *****************************************************************************
+
+-- Pattern matching is a way of destructuring an algebraic data type, selecting a
+-- code clause based on its constructor and then binding the components to variables.
+showVal :: LispVal -> String
+showVal (String contents) = "\"" ++ contents ++ "\""
+showVal (Atom name)       = name
+showVal (Number contents) = show contents
+showVal (Bool True)       = "#t"
+showVal (Bool False)      = "#f"
+
+-- *****************************************************************************
 -- PARSING
+-- *****************************************************************************
+
 symbol :: Parser Char
 symbol = oneOf "!#$%&|*+-/:<=>?@^_~"
 
@@ -64,7 +82,8 @@ parseExpr =  parseAtom
 -- Paranthesized lists
 parseList :: Parser LispVal
 parseList =
-  parseExpr `sepBy` spaces >>= \expressions -> return $ List expressions
+  parseExpr `sepBy` spaces >>= \expressions ->
+    return $ List expressions
 
 -- (a . (b . nil)) ---> [[a],[b]]
 parseDottedList :: Parser LispVal
@@ -81,6 +100,7 @@ parseQuoted = do
 
 -- EXPRESSION READING
 readExpr :: String -> String
-readExpr input = case parse parseExpr "lisp" input of
-  Left err -> "No match: " ++ show err
-  Right _  -> "Found value"
+readExpr input =
+  case parse parseExpr "lisp" input of
+  Left err  -> "No match: " ++ show err
+  Right val -> showVal val

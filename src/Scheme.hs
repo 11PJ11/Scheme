@@ -2,6 +2,8 @@ module Scheme where
 import           Control.Monad
 import           Text.ParserCombinators.Parsec hiding (spaces)
 
+(|>) x f = f x
+
 -- *****************************************************************************
 -- RETURN VALUES
 -- *****************************************************************************
@@ -19,6 +21,60 @@ data LispVal = Atom String
 -- EVALUATION
 -- *****************************************************************************
 
+-- The notation val@(String _) matches against any LispVal that's a string and
+-- then binds val to the whole LispVal, and not just the contents of the String
+-- constructor
+eval :: LispVal -> LispVal
+eval val@(String _)             = val
+eval val@(Number _)             = val
+eval val@(Bool _)               = val
+eval (List [Atom "quote", val]) = val
+eval (List (Atom funcName : args))  = map eval args
+                                    |> apply funcName
+
+apply :: String -> [LispVal] -> LispVal
+apply funcName args =
+  maybe (Bool False) ($ args) $ lookup funcName primitives
+
+primitives :: [(String, [LispVal] -> LispVal)]
+primitives = [("+", numericBinop (+)),
+              ("-", numericBinop (-)),
+              ("*", numericBinop (*)),
+              ("/", numericBinop div),
+              ("mod", numericBinop mod),
+              ("quotient", numericBinop quot),
+              ("remainder", numericBinop rem)]
+
+numericBinop :: (Integer -> Integer -> Integer) -> [LispVal] -> LispVal
+numericBinop op params =  map unpackNum params
+                       |> foldl1 op
+                       |> Number
+
+unpackNum :: LispVal -> Integer
+unpackNum (Number n) = n
+unpackNum (String n) =
+  let parsed = reads n :: [(Integer, String)] in
+  if null parsed
+    then 0
+    else fst $ parsed !! 0
+
+unpackNum (List [n]) = unpackNum n
+unpackNum _ = 0
+
+-- *****************************************************************************
+-- PRESENTATION
+-- *****************************************************************************
+
+instance Show LispVal
+  where show = showVal
+-- The unwordsList function works like the Haskell Prelude's unwords function,
+-- which glues together a list of words with spaces.
+-- Since we're dealing with a list of LispVals instead of words,
+-- we define a function that first converts the LispVals into their
+-- string representations and then applies unwords to it
+unwordsList :: [LispVal] -> String
+unwordsList = unwords . map showVal
+
 -- Pattern matching is a way of destructuring an algebraic data type, selecting a
 -- code clause based on its constructor and then binding the components to variables.
 showVal :: LispVal -> String
@@ -27,6 +83,9 @@ showVal (Atom name)       = name
 showVal (Number contents) = show contents
 showVal (Bool True)       = "#t"
 showVal (Bool False)      = "#f"
+showVal (List contents) = "(" ++ unwordsList contents ++ ")"
+showVal (DottedList head tail) =
+  "(" ++ unwordsList head ++ " . " ++ showVal tail ++ ")"
 
 -- *****************************************************************************
 -- PARSING
@@ -99,8 +158,8 @@ parseQuoted = do
   return $ List [Atom "quote", x]
 
 -- EXPRESSION READING
-readExpr :: String -> String
-readExpr input =
-  case parse parseExpr "lisp" input of
-  Left err  -> "No match: " ++ show err
-  Right val -> showVal val
+
+readExpr :: String -> LispVal
+readExpr input = case parse parseExpr "lisp" input of
+    Left err  -> String $ "No match: " ++ show err
+    Right val -> val
